@@ -34,6 +34,17 @@ export default function SessionPanel() {
     averageScore: 0
   });
 
+  // State for new question creation (replaces prompt())
+  const [showQuestionForm, setShowQuestionForm] = useState(false);
+  const [newQuestion, setNewQuestion] = useState({
+    text: "",
+    choice1: "",
+    choice2: "",
+    choice3: "",
+    choice4: "",
+    correctAnswer: "1"
+  });
+
   // Fetch available quizzes and questions when component mounts
   useEffect(() => {
     fetchQuizzes();
@@ -61,7 +72,10 @@ export default function SessionPanel() {
   }, [timerActive]);
 
   const fetchQuizzes = async () => {
-    if (!accessToken) return;
+    if (!accessToken) {
+      console.log("Please login first");
+      return;
+    }
 
     try {
       const res = await fetch("http://127.0.0.1:8000/api/quizzes/", {
@@ -84,7 +98,10 @@ export default function SessionPanel() {
   };
 
   const fetchQuestions = async (quizId: string) => {
-    if (!accessToken) return;
+    if (!accessToken) {
+      console.log("Please login first");
+      return;
+    }
 
     try {
       const res = await fetch(`http://127.0.0.1:8000/api/questions/?quiz=${quizId}`, {
@@ -109,12 +126,12 @@ export default function SessionPanel() {
 
   const createSession = async () => {
     if (!accessToken) {
-      alert("Login first");
+      console.log("Please login first");
       return;
     }
 
     if (!selectedQuiz) {
-      alert("Please select a quiz first");
+      console.log("Please select a quiz first");
       return;
     }
 
@@ -130,7 +147,7 @@ export default function SessionPanel() {
     if (!res.ok) {
       const err = await res.json();
       console.error("Failed to create session:", err);
-      alert(`Error: ${JSON.stringify(err)}`);
+      console.log(`Error: ${JSON.stringify(err)}`);
       return;
     }
 
@@ -154,13 +171,12 @@ export default function SessionPanel() {
       });
     });
     
-    // UPDATED WebSocket message handler
     ws.onMessage((msg) => {
       console.log("📩 Teacher received:", msg);
       
       if (msg.error) {
         console.error("❌ Teacher received error:", msg.error);
-        alert(`Error: ${msg.error}`);
+        console.log(`Error: ${msg.error}`);
       }
       
       if (msg.type === "host_join_success") {
@@ -213,13 +229,15 @@ export default function SessionPanel() {
       wsClient.send({
         action: "host_end_session"
       });
-      alert("Session ended!");
+      console.log("Session ended!");
+      setIsConnected(false);
+      setStatus("Session Ended");
     }
   };
 
   const pushQuestion = () => {
     if (!wsClient || !isConnected || !selectedQuestion) {
-      alert("WebSocket not connected or no question selected");
+      console.log("WebSocket not connected or no question selected");
       return;
     }
 
@@ -238,54 +256,22 @@ export default function SessionPanel() {
     });
   };
 
-  const createNewQuestion = async () => {
+  const handleCreateQuestion = async () => {
     if (!accessToken || !selectedQuiz) {
-      alert("Login first and select a quiz");
+      console.log("Login first and select a quiz");
       return;
     }
 
-    const questionText = prompt("Enter question text:");
-    if (!questionText) return;
+    const { text, choice1, choice2, choice3, choice4, correctAnswer } = newQuestion;
 
-    // Get answer choices from teacher with null checks
-    const choice1 = prompt("Enter choice 1:");
-    if (!choice1) {
-      alert("Choice 1 is required");
-      return;
-    }
-    
-    const choice2 = prompt("Enter choice 2:");
-    if (!choice2) {
-      alert("Choice 2 is required");
-      return;
-    }
-    
-    const choice3 = prompt("Enter choice 3:");
-    if (!choice3) {
-      alert("Choice 3 is required");
-      return;
-    }
-    
-    const choice4 = prompt("Enter choice 4:");
-    if (!choice4) {
-      alert("Choice 4 is required");
-      return;
-    }
-
-    // Let teacher specify which is correct
-    const correctAnswer = prompt(
-      `Which choice is correct? Enter 1, 2, 3, or 4:\n1. ${choice1}\n2. ${choice2}\n3. ${choice3}\n4. ${choice4}`
-    );
-
-    // FIX: Check if correctAnswer is not null before using it
-    if (!correctAnswer || !['1', '2', '3', '4'].includes(correctAnswer)) {
-      alert("Please enter 1, 2, 3, or 4 for the correct answer");
+    if (!text || !choice1 || !choice2 || !choice3 || !choice4) {
+      console.log("All fields are required");
       return;
     }
 
     const questionData = {
       quiz: selectedQuiz,
-      text: questionText,
+      text: text,
       order: questions.length,
       time_limit: 30,
       choices: [
@@ -307,17 +293,26 @@ export default function SessionPanel() {
       });
 
       if (res.ok) {
-        const newQuestion = await res.json();
-        setQuestions([...questions, newQuestion]);
-        setSelectedQuestion(newQuestion.id);
-        alert("Question created successfully!");
+        const newQuestionData = await res.json();
+        setQuestions([...questions, newQuestionData]);
+        setSelectedQuestion(newQuestionData.id);
+        console.log("Question created successfully!");
+        setShowQuestionForm(false);
+        setNewQuestion({
+          text: "",
+          choice1: "",
+          choice2: "",
+          choice3: "",
+          choice4: "",
+          correctAnswer: "1"
+        });
       } else {
         const error = await res.json();
-        alert(`Error: ${JSON.stringify(error)}`);
+        console.log(`Error: ${JSON.stringify(error)}`);
       }
     } catch (error) {
       console.error("Failed to create question:", error);
-      alert("Failed to create question");
+      console.log("Failed to create question");
     }
   };
 
@@ -418,13 +413,80 @@ export default function SessionPanel() {
             </select>
 
             <button 
-              onClick={createNewQuestion}
+              onClick={() => setShowQuestionForm(true)}
               style={{ marginLeft: "10px", padding: "5px 10px" }}
               disabled={!selectedQuiz}
             >
               + New Question
             </button>
           </div>
+
+          {/* New Question Form (replaces prompt) */}
+          {showQuestionForm && (
+            <div style={{
+              marginTop: "20px",
+              padding: "20px",
+              backgroundColor: "#f8f9fa",
+              border: "1px solid #dee2e6",
+              borderRadius: "8px"
+            }}>
+              <h4>Create New Question</h4>
+              <div style={{ marginBottom: "10px" }}>
+                <input
+                  type="text"
+                  placeholder="Question text"
+                  value={newQuestion.text}
+                  onChange={(e) => setNewQuestion({...newQuestion, text: e.target.value})}
+                  style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
+                />
+                <input
+                  type="text"
+                  placeholder="Choice 1"
+                  value={newQuestion.choice1}
+                  onChange={(e) => setNewQuestion({...newQuestion, choice1: e.target.value})}
+                  style={{ width: "100%", padding: "8px", marginBottom: "5px" }}
+                />
+                <input
+                  type="text"
+                  placeholder="Choice 2"
+                  value={newQuestion.choice2}
+                  onChange={(e) => setNewQuestion({...newQuestion, choice2: e.target.value})}
+                  style={{ width: "100%", padding: "8px", marginBottom: "5px" }}
+                />
+                <input
+                  type="text"
+                  placeholder="Choice 3"
+                  value={newQuestion.choice3}
+                  onChange={(e) => setNewQuestion({...newQuestion, choice3: e.target.value})}
+                  style={{ width: "100%", padding: "8px", marginBottom: "5px" }}
+                />
+                <input
+                  type="text"
+                  placeholder="Choice 4"
+                  value={newQuestion.choice4}
+                  onChange={(e) => setNewQuestion({...newQuestion, choice4: e.target.value})}
+                  style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
+                />
+                <div>
+                  <label>Correct Answer: </label>
+                  <select
+                    value={newQuestion.correctAnswer}
+                    onChange={(e) => setNewQuestion({...newQuestion, correctAnswer: e.target.value})}
+                    style={{ marginLeft: "10px", padding: "5px" }}
+                  >
+                    <option value="1">Choice 1</option>
+                    <option value="2">Choice 2</option>
+                    <option value="3">Choice 3</option>
+                    <option value="4">Choice 4</option>
+                  </select>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: "10px" }}>
+                <button onClick={handleCreateQuestion}>Create Question</button>
+                <button onClick={() => setShowQuestionForm(false)}>Cancel</button>
+              </div>
+            </div>
+          )}
 
           {/* Push Question Button */}
           <button 

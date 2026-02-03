@@ -239,13 +239,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS and CSRF settings for PowerPoint Add-in
 CORS_ALLOWED_ORIGINS = [
-    "https://localhost:3001",  # PPT add-in iframe origin
+    "http://localhost:3001",  # PPT add-in iframe origin
     "http://localhost:3000", 
 ]
 CORS_ALLOW_CREDENTIALS = True
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://localhost:3001",  # PPT add-in iframe origin
+    "http://localhost:3001",  # PPT add-in iframe origin
 ]
 
 # ASGI

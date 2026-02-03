@@ -4,16 +4,45 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 
-const root = ReactDOM.createRoot(
-  document.getElementById('root') as HTMLElement
-);
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+// Office.js initialization
+declare global {
+  interface Window {
+    Office: any;
+  }
+}
 
-// If you want to start measuring performance in your app, pass a function
-// to log results (for example: reportWebVitals(console.log))
-// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
-reportWebVitals();
+if (window.Office) {
+  console.log('Office.js detected, initializing...');
+  
+  // Wait for Office to be ready before rendering React
+  window.Office.onReady((info: any) => {
+    console.log(`✅ Office.js ready for ${info.host} on ${info.platform}`);
+    
+    // Now it's safe to render React
+    const root = ReactDOM.createRoot(
+      document.getElementById('root') as HTMLElement
+    );
+    root.render(
+      <React.StrictMode>
+        <App />
+      </React.StrictMode>
+    );
+    
+    // Report web vitals
+    reportWebVitals();
+  });
+} else {
+  console.log('⚠️ Running in browser (not Office context)');
+  
+  // Fallback for regular browser
+  const root = ReactDOM.createRoot(
+    document.getElementById('root') as HTMLElement
+  );
+  root.render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
+  );
+  
+  reportWebVitals();
+}
